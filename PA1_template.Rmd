@@ -1,25 +1,216 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: 'Assignment: Course Project 1'
+author: "Michael Jesudoss"
+date: "May 29, 2016"
+output: html_document
 ---
 
+#Customizing Startup
+```{R}
+##Remove any pre-existing variables/objects
+rm(list = ls(all = TRUE))
+```
 
-## Loading and preprocessing the data
+```{R}
+# clear the console
+cat("\014") 
+```
+
+```{R}
+oldw <- getOption("warn")
+options(warn = -1) #safest way to temporary turn off warnings : turn off part I
+```
+
+```{R}
+#Install and Load the requisite libaries 
+Lib_to_used<-c("datasets", "data.table", "dplyr", "base","ggplot2", "lattice")# enter the pre-requsite libraries
+
+Load_Lib <- function(lib) {
+        if (!lib %in% installed.packages()) {
+                print(paste("installing",lib)) 
+                install.packages(lib) 
+                }
+        }
+a=0
+b= length(Lib_to_used)
+for (i in Lib_to_used) {
+        Load_Lib(i)
+        library(i, character.only = TRUE)
+        #print(paste("library:",i, "has been loaded"))
+        a = a+1
+       print (paste0(a, " of ", b, " required libraries have been loaded:", " [library:", i, "]"))
+        }
+```
+
+```{R}
+# Automatically install the requistite libraries if not previously installed from the CRAN mirror
+r <- getOption("repos")
+r["CRAN"] <- "http://cran.us.r-project.org"
+options(repos = r)
+rm(r)
+```
+
+```{R}
+options(warn = oldw) #safest way to temporary turn off warnings: turn on part II
+```
+
+```{R}
+##Remove any pre-existing variables/objects
+rm(list = ls(all = TRUE))
+```
+
+
+##Create a folder in the desktop for this assignment
+```{R}
+setwd("~/Desktop")
+if (!dir.exists("Repro_Res_Assgn")){
+        dir.create("Repro_Res_Assgn")
+}
+```
+
+##set working directory
+```{R}
+setwd("~/Desktop/Repro_Res_Assgn")
+```
+#  Loading and preprocessing the data
+
+```{R}
+##Download and unzip the data to the local desktop folder called "Data.zip"
+if (!file.exists("Data.zip")){
+        DataURL<-"https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+        download.file(DataURL, destfile = "Data.zip", method="curl")
+        unzip("Data.zip", exdir = "./")
+}
+
+# 1.Load the data
+data <-fread ("activity.csv",header = TRUE)
+
+#2. Process/transform the data (if necessary) into a format suitable for your analysis
+data$date<-as.Date(data$date, "%Y-%m-%d")
+str(data)
+```
+
+# What is mean total number of steps taken per day?
+For this part of the assignment, you can ignore the missing values in the dataset.
+```{R}
+
+total_steps<-aggregate(steps~date,data, sum, na.rm = TRUE)
+print(paste0("Mean total number of steps taken per day excluding the missing values is :", round(mean(total_steps$steps, na.rm = TRUE), digits = 3)))
+```
+
+### 1.Calculate the total number of steps taken per day
+
+```{R}
+ttl_steps<-aggregate(steps~date,data, sum, na.rm = TRUE)
+print("Total numbers of steps taken per day excluding the missing values are:")
+ttl_steps
+```
+
+### 2. Make a histogram of the total number of steps taken each day
+
+```{R}
+with(ttl_steps, hist(steps, type = "l", col = "blue"))
+```
+
+###3.  Calculate and report the mean and median of the total number of steps taken per day
+
+```{R}
+mean_step<-round(mean(ttl_steps$steps), digits = 3)
+median_step<-round(median(ttl_steps$steps), digits = 3)
+print(paste("Mean of the total number of steps taken per day excluding the missing values is :", mean_step)) 
+print(paste0("Median of the total number of steps taken per day excluding the missing values is :", median_step))
+```
+
+# What is the average daily activity pattern?
+### 1. Make a time series plot (i.e. 𝚝𝚢𝚙𝚎 = "𝚕") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+```{R}
+steps_interval<-aggregate(steps~interval, data, mean, rm.na= TRUE)
+with(steps_interval, plot(steps~interval, type = "l",main = "time series plot after omitting missing values",  xlab= "5-minute interval", ylab ="the average number of steps taken"))
+```
+
+### 2. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+```{R}
+steps_interval[which.max(steps_interval$steps), ]$interval
+```
+
+# Imputing missing values
+```{R}
+## Note that there are a number of days/intervals where there are missing values (coded as 𝙽𝙰). The presence of missing days may introduce bias into some calculations or summaries of the data.
+```
+###1. Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with 𝙽𝙰s)
+```{R}
+sum(is.na(data))
+
+```
+###2.  Devise a strategy for filling in all of the missing values in the dataset. 
+The strategy does not need to be #sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, #etc.
+```{R}
+#### The missing values in the "steps" will be given the appropriate averaged steps value for that given interval
+steps_interval <-aggregate(steps~interval, data, mean)
+miss_value<-function(interval){
+       steps_interval[steps_interval$interval == interval, ]$steps
+        }
+```     
+
+###3.  Create a new dataset that is equal to the original dataset but with the missing data filled in.
+```{R}
+oldw <- getOption("warn")
+options(warn = -1) #safest way to temporary turn off warnings : turn off part
+new_dataset<-data
+x<-nrow(new_dataset)
+a=0
+for (i in 1:x) {
+        if (is.na(new_dataset[i, ]$steps)){
+                new_dataset[i, ]$steps <- miss_value(new_dataset[i, ]$interval)
+                a = a+1
+                }
+        }
+print(paste("number of rows with missing values changed:", a))
+options(warn = oldw) #safest way to temporary turn off warnings: turn on part II
+```
 
 
 
-## What is mean total number of steps taken per day?
+
+###4a.  Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. ->
+```{R}
+ndd_steps <-aggregate(steps~date, new_dataset, sum)
+with(ndd_steps, hist(steps, col = "red"))
+
+
+mean_step_NA<-round(mean(ndd_steps$steps), digits = 3)
+median_step_NA<-round(median(ndd_steps$steps), digits = 3)
+print(paste("Mean of the total number of steps taken per day including the missing values is :", mean_step_NA)) 
+print(paste0("Median of the total number of steps taken per day including the missing values is :", median_step_NA))
+```
+###4b. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps? -
+```{R}
+df1<- c("Without missing NAs   :",mean_step, median_step)
+df2<- c("Including missing NAs :",mean_step_NA,median_step_NA)
+df<-rbind(df1,df2)
+rownames(df)<-NULL
+colnames(df)<-c("NA excluded/included", "Mean", "Median")
+df
+```
+# Are there differences in activity patterns between weekdays and weekends?
+For this part the 𝚠𝚎𝚎𝚔𝚍𝚊𝚢𝚜() function may be of some help here. Use the dataset with the filled-in missing values for this part.
+###1. Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.
+```{R}
+A<-mutate(new_dataset,  day_code = factor(1*(weekdays(date) %in%  c("Sunday", "Saturday"))))
+B<-mutate(A,  day = ifelse(day_code ==0,"Weekday","Weekend"))
+B$day<-as.factor(B$day)
+```
+
+###2. Make a panel plot containing a time series plot (i.e. 𝚝𝚢𝚙𝚎 = 
+of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). See the README file in the GitHub repository to see an example of what this plot should look like using simulated data.
+```{R}
+g<-ggplot(B, aes(interval,steps, color = day))
+g<-g+geom_line()+xlab("5-minute interval")+ylab("average number of steps taken per day")+ggtitle("Time Series Plot")
+plot(g)
+```
 
 
 
-## What is the average daily activity pattern?
 
 
 
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
